@@ -7,25 +7,26 @@ echo ""
 
 # Update and install dependencies
 echo "[1/7] Atualizando sistema..."
-sudo apt update && sudo apt upgrade -y
+sudo apt-get update
+sudo apt-get upgrade -y
 
 # Install basic tools
 echo "[2/7] Instalando ferramentas..."
-sudo apt install -y curl git jq vim ripgrep wget zip openssh-client
+sudo apt-get install -y curl git jq vim ripgrep wget zip
 
 # Install Node.js
 echo "[3/7] Instalando Node.js..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
-sudo apt install -y nodejs
+sudo apt-get install -y nodejs
 
 # Install OpenCode
 echo "[4/7] Instalando OpenCode..."
 npm install -g opencode-ai@latest
 
-# Install Python and libraries for office-files skill
+# Install Python and libraries
 echo "[5/7] Instalando Python e bibliotecas..."
-sudo apt install -y python3 python3-pip python3-venv
-pip3 install --no-cache-dir pandas openpyxl python-docx python-pptx lxml
+sudo apt-get install -y python3 python3-pip
+pip3 install --break-system-packages pandas openpyxl python-docx python-pptx lxml
 
 # Setup skills
 echo "[6/7] Configurando skills..."
@@ -34,7 +35,7 @@ mkdir -p ~/.config/opencode/skills
 # Copy office-files skill
 if [ -d "skills/office-files" ]; then
     cp -r skills/office-files ~/.config/opencode/skills/
-    echo "    ✓ Skill office-files instalada"
+    echo "    Skill office-files instalada"
 fi
 
 # Create config
