@@ -80,6 +80,11 @@ if exist "%INSTALL_DIR%" (
 )
 echo        ✓ Arquivos baixados
 
+REM Converter line endings para LF (corrigir CRLF)
+echo [4/5] Corrigindo arquivos...
+wsl sed -i 's/\r$//' setup.sh
+wsl sed -i 's/\r$//' skills/office-files/SKILL.md
+
 REM Executar setup no WSL
 echo [4/5] Instalando OpenCode no WSL...
 cd /d "%INSTALL_DIR%"
