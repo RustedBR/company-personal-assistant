@@ -68,6 +68,11 @@ if %errorlevel% neq 0 (
 )
 echo        ✓ Git instalado
 
+REM Configurar Git para line endings Unix (LF)
+echo [3/5] Configurando Git para line endings...
+git config --global core.autocrlf input
+git config --global core.eol lf
+
 REM Clonar repositorio
 echo [3/5] Baixando arquivos do GitHub...
 if exist "%INSTALL_DIR%" (
@@ -77,13 +82,16 @@ if exist "%INSTALL_DIR%" (
 ) else (
     echo        Clonando repositorio...
     git clone "%REPO_URL%" "%INSTALL_DIR%"
+    cd /d "%INSTALL_DIR%"
+    git config --global core.autocrlf input
+    git checkout .
 )
 echo        ✓ Arquivos baixados
 
 REM Converter line endings para LF (corrigir CRLF)
 echo [4/5] Corrigindo arquivos...
-wsl sed -i 's/\r$//' setup.sh
-wsl sed -i 's/\r$//' skills/office-files/SKILL.md
+cd /d "%INSTALL_DIR%"
+wsl bash -c "cd ~/opencode-wsl 2>/dev/null || cd /mnt/c/Users/rusted/opencode-wsl 2>/dev/null || true; sed -i 's/\r$//' setup.sh; sed -i 's/\r$//' skills/office-files/SKILL.md"
 
 REM Executar setup no WSL
 echo [4/5] Instalando OpenCode no WSL...

@@ -1,0 +1,9 @@
+# Force all text files to use LF line endings
+* text=auto eol=lf
+
+# Explicitly set file types
+*.sh text eol=lf
+*.bat text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
