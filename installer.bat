@@ -1,9 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set "REPO_URL=https://github.com/RustedBR/company-personal-assistant.git"
-set "INSTALL_DIR=%USERPROFILE%\opencode-wsl"
-
 title OpenCode WSL - Instalador
 color 1f
 
@@ -73,29 +70,19 @@ echo [3/5] Configurando Git para line endings...
 git config --global core.autocrlf input
 git config --global core.eol lf
 
-REM Clonar repositorio
-echo [3/5] Baixando arquivos do GitHub...
-if exist "%INSTALL_DIR%" (
-    echo        Pasta ja existe. Atualizando...
-    cd /d "%INSTALL_DIR%"
-    git pull origin master 2>nul
-) else (
-    echo        Clonando repositorio...
-    git clone "%REPO_URL%" "%INSTALL_DIR%"
-    cd /d "%INSTALL_DIR%"
-    git config --global core.autocrlf input
-    git checkout .
-)
-echo        ✓ Arquivos baixados
+REM Baixar arquivos (ja deve estar local, so atualiza)
+echo [3/5] Verificando arquivos...
+cd /d "%~dp0"
+git pull origin master 2>nul || echo        Ja atualizado
+echo        ✓ Arquivos OK
 
-REM Converter line endings para LF (corrigir CRLF)
+REM Corrigir line endings
 echo [4/5] Corrigindo arquivos...
-cd /d "%INSTALL_DIR%"
-wsl bash -c "cd ~/opencode-wsl 2>/dev/null || cd /mnt/c/Users/rusted/opencode-wsl 2>/dev/null || true; sed -i 's/\r$//' setup.sh; sed -i 's/\r$//' skills/office-files/SKILL.md"
+wsl bash -c "cd ""%~dp0:\=/%"" 2>/dev/null && sed -i 's/\r$//' setup.sh 2>/dev/null"
 
 REM Executar setup no WSL
 echo [4/5] Instalando OpenCode no WSL...
-cd /d "%INSTALL_DIR%"
+cd /d "%~dp0"
 wsl bash setup.sh
 if %errorlevel% neq 0 (
     echo.
@@ -105,13 +92,12 @@ if %errorlevel% neq 0 (
 )
 echo        ✓ OpenCode instalado
 
-echo [5/5] Verificando instalacao...
-wsl which opencode >nul 2>&1
+echo [5/5] Verificando...
+wsl ~/.opencode/bin/opencode --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
-    echo [AVISO] Pode ser necessario reiniciar o WSL. Execute:
-    echo        wsl --shutdown
-    echo        E tente novamente.
+    echo [AVISO] Execute: wsl --shutdown
+    echo        E tente instalar novamente
 )
 
 echo.
@@ -131,24 +117,33 @@ echo    ABRINDO OPENCOD
 echo ======================================
 echo.
 
-REM Verificar se WSL tem sessoes ativas
-wsl -l -v 2>nul | findstr /C:"Running" >nul
-set "WSL_RUNNING=%errorlevel%"
+echo [1] Verificando WSL...
+wsl -l -v
+echo.
 
-if %WSL_RUNNING%==0 (
-    echo [INFO] WSL ja esta aberto. Executando OpenCode...
-    echo.
-    echo Quando terminar, digite: exit
-    echo.
-    wsl opencode
-) else (
-    echo [INFO] Abrindo nova janela do WSL com OpenCode...
-    echo.
-    echo Quando terminar, basta fechar a janela
-    echo.
-    start "OpenCode" wsl opencode
+echo [2] Verificando opencode...
+wsl ~/.opencode/bin/opencode --version
+echo.
+
+if %errorlevel% neq 0 (
+    echo [ERRO] OpenCode nao instalado!
+    echo Execute a opcao 1 para instalar
+    pause
+    goto menu
 )
 
+echo.
+echo [3] Abrindo OpenCode...
+echo.
+echo    Dica: use 'cd' para mudar de pasta dentro do OpenCode
+echo    Quando terminar, digite: exit
+echo.
+
+wsl ~/.opencode/bin/opencode
+
+echo.
+echo OpenCode fechado.
+pause
 goto menu
 
 :exit
