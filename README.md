@@ -1,68 +1,134 @@
-# OpenCode WSL - Instalador Automático
+# OpenCode + MemPalace - Instalador Multi-OS
 
-Instalação automática do OpenCode no Windows usando WSL (Windows Subsystem for Linux).
+Instalação automática do OpenCode com memória persistente usando MemPalace.
 
 ## O que está incluído
 
-- **OpenCode** - Terminal de IA para programação
-- **Modelo Big Pickle** - Gratuito via OpenCode Zen
+- **OpenCode** - Terminal de IA para programação (75+ providers)
+- **Modelo Big Pickle** - Gratuito via Google
+- **MemPalace** - Memória persistente (armazena todas as conversas)
 - **Skill office-files** - Manipulação de arquivos Office (CSV, XLSX, DOCX, PPTX, XML)
-- **Python** - pandas, openpyxl, python-docx, python-pptx, lxml
+- **Python** - pandas, openpyxl, python-docx, python-pptx, lxml, pypdf
 
-## Requisitos
+## Sistemas suportados
 
-- Windows 10/11
-- WSL2 (Ubuntu)
-- 16GB RAM recomendado
+| Sistema | Status |
+|---------|--------|
+| Linux (Ubuntu/Debian) | ✅ |
+| WSL (Windows) | ✅ |
+| macOS | ✅ |
 
 ## Como usar
 
-### 1. Primeira vez - INSTALAR
+### Instalação Rápida
 
-1. Baixe/clone este repositório
-2. Clique com botão direito em `installer.bat`
-3. Selecione **"Executar como administrador"**
-4. Escolha opção **1 - INSTALAR**
-5. Aguarde a instalação completa
+```bash
+# Clone o repositório
+git clone https://github.com/RustedBR/company-personal-assistant.git ~/opencode-wsl
+cd ~/opencode-wsl
 
-### 2. Usar o OpenCode
+# Execute o instalador
+bash setup.sh
+```
 
-1. Execute `installer.bat` como admin
-2. Escolha opção **2 - ABRIR OpenCode**
-3. O terminal WSL abre automaticamente com o OpenCode rodando
-
-### Alternativa - Sem usar o installer
-
-Abra o WSL manualmente e digite:
+### Usar o OpenCode
 
 ```bash
 opencode
 ```
 
+Ao abrir, o OpenCode automaticamente:
+1. Mina todas as sessões anteriores para o MemPalace
+2. Carrega suas memórias e preferências
+3. Fica pronto para usar
+
 ## Estrutura
 
 ```
 opencode-wsl/
-├── installer.bat        # Menu de instalacao (Windows)
-├── setup.sh            # Script de instalacao (WSL)
+├── setup.sh                    # Script de instalação (multi-OS)
+├── INSTRUCOES.md               # Suas instruções personalizadas
+├── installer.bat               # Menu de instalação (Windows)
 ├── skills/
 │   └── office-files/
-│       └── SKILL.md    # Skill para arquivos Office
+│       └── SKILL.md            # Skill para arquivos Office
+├── mine_to_kg.py               # Script para extrair entidades do KG
+├── pdf_to_mempalace.py         # Script para importar PDFs
 └── README.md
 ```
 
+## Configuração
+
+O instalador cria `~/.config/opencode/opencode.json` com:
+
+```json
+{
+  "agent": {
+    "build": { "temperature": 0, "steps": 25 },
+    "plan": { "temperature": 0.5, "steps": 10 }
+  },
+  "mcp": {
+    "mempalace": {
+      "type": "local",
+      "command": ["python3", "-m", "mempalace.mcp_server"],
+      "enabled": true
+    }
+  }
+}
+```
+
+## Comandos úteis
+
+```bash
+# Iniciar OpenCode (com mineração automática)
+opencode
+
+# Verificar status da memória
+mempalace status
+
+# Buscar nas conversas passadas
+mempalace search "termo de busca"
+
+# Listar wings
+mempalace list_wings
+
+# Consultar knowledge graph
+mempalace kg_query --entity "projeto"
+```
+
+## Fluxo de Uso
+
+1. **Abra o OpenCode** → `opencode`
+2. **Mineração automática** → Suas sessões são salvas no MemPalace
+3. **Use normally** → O AI lembra de tudo que você já discutiu
+4. **Feche a sessão** → Memória salva automaticamente
+
 ## Solução de problemas
 
-### WSL não está instalado
-Execute no PowerShell como Administrador:
-```powershell
-wsl --install
+### MemPalace não funciona
+```bash
+mempalace init
+mempalace status
 ```
 
 ### OpenCode não encontrado
-Execute novamente a opção 1 (INSTALAR) no installer.bat
+```bash
+source ~/.bashrc
+opencode --version
+```
 
-## Suporte
+### MCP não carrega
+Reinicie o OpenCode:
+```bash
+opencode
+```
+
+## Recursos
 
 - OpenCode: https://opencode.ai/docs/
-- WSL: https://docs.microsoft.com/pt-br/windows/wsl/
+- MemPalace: https://github.com/milla-jovovich/mempalace
+- Documentação: https://mempalace.tech/
+
+---
+
+**Nota:** Este instalador foi configurado para uso pessoal. Para usar em outras máquinas, clone o repositório e execute `setup.sh`.
