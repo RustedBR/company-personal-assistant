@@ -86,6 +86,7 @@ fi
 case "$OS" in
     "macOS")
         SHELL_RC="$HOME/.zshrc"
+        # macOS usa stat diferente
         ;;
     *)
         SHELL_RC="$HOME/.bashrc"
@@ -123,15 +124,31 @@ if ! $PYTHON_CMD -m pip &> /dev/null; then
     esac
 fi
 
-# Instalar bibliotecas
-$PYTHON_CMD -m pip install --user --break-system-packages pandas openpyxl python-docx python-pptx lxml pypdf 2>/dev/null || \
-$PYTHON_CMD -m pip install --user pandas openpyxl python-docx python-pptx lxml pypdf
+# Instalar bibliotecas (macOS não usa --break-system-packages)
+case "$OS" in
+    "macOS")
+        $PYTHON_CMD -m pip install --user pandas openpyxl python-docx python-pptx lxml pypdf 2>/dev/null || \
+        pip3 install pandas openpyxl python-docx python-pptx lxml pypdf
+        ;;
+    *)
+        $PYTHON_CMD -m pip install --user --break-system-packages pandas openpyxl python-docx python-pptx lxml pypdf 2>/dev/null || \
+        $PYTHON_CMD -m pip install --user pandas openpyxl python-docx python-pptx lxml pypdf
+        ;;
+esac
 
 #=== 5. Instalar MemPalace ===
 echo -e "${AZUL}[5/7] Instalando MemPalace...${FIM}"
 
-$PYTHON_CMD -m pip install --user --break-system-packages mempalace 2>/dev/null || \
-$PYTHON_CMD -m pip install --user mempalace
+case "$OS" in
+    "macOS")
+        $PYTHON_CMD -m pip install --user mempalace 2>/dev/null || \
+        pip3 install mempalace
+        ;;
+    *)
+        $PYTHON_CMD -m pip install --user --break-system-packages mempalace 2>/dev/null || \
+        $PYTHON_CMD -m pip install --user mempalace
+        ;;
+esac
 
 # Inicializar MemPalace
 mempalace init 2>/dev/null || true
@@ -207,7 +224,7 @@ if [[ -f "$LOG_FILE" ]]; then
     done < "$LOG_FILE"
 fi
 
-mapfile -t SESSIONS < <(opencode session list 2>/dev/null | grep -oP 'ses_[a-zA-Z0-9]+' || true)
+mapfile -t SESSIONS < <(opencode session list 2>/dev/null | grep -oE 'ses_[a-zA-Z0-9]+' || true)
 
 NEW_COUNT=0
 
@@ -219,7 +236,7 @@ for sid in "${SESSIONS[@]}"; do
     
     OUTPUT_FILE="$TEMP_DIR/${sid}.json"
     if opencode export "$sid" > "$OUTPUT_FILE" 2>&1; then
-        FILE_SIZE=$(stat -c%s "$OUTPUT_FILE" 2>/dev/null || echo 0)
+        FILE_SIZE=$(stat -c%s "$OUTPUT_FILE" 2>/dev/null || stat -f%z "$OUTPUT_FILE" 2>/dev/null || echo 0)
         if [[ "$FILE_SIZE" -ge "$MIN_SIZE" ]]; then
             NEW_COUNT=$((NEW_COUNT + 1))
         fi
@@ -245,13 +262,19 @@ SCRIPT
 chmod +x ~/.config/opencode/export_and_mine.sh
 
 # Criar alias para executar mineração antes do OpenCode
+# O alias só funciona em shells interativos (bash/zsh)
 cat >> "$SHELL_RC" << 'ALIAS'
 
 # Alias OpenCode com mineração automática
-opencode() {
+opencode_auto_mine() {
     ~/.config/opencode/export_and_mine.sh 2>/dev/null || true
     command opencode "$@"
 }
+
+# Ativar alias automaticamente
+if [ -t 0 ]; then
+    alias opencode=opencode_auto_mine
+fi
 ALIAS
 
 # Recarregar shell para ativar alias imediatamente
