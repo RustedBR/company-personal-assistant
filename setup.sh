@@ -153,9 +153,7 @@ INSTRUCOES_PATH="$HOME/.config/opencode/INSTRUCOES.md"
 cat > ~/.config/opencode/opencode.json << EOF
 {
   "\$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "external_directory": "allow"
-  },
+  "permission": {},
   "agent": {
     "build": {
       "temperature": 0,
