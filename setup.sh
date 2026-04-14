@@ -1,73 +1,158 @@
 #!/bin/bash
-# Corrigir line endings CRLF para LF
-sed -i 's/\r$//' "$0"
+# Script de Instalação OpenCode + MemPalace (Multi-OS)
+# Funciona em: Linux, macOS, WSL, Ubuntu/Debian
 
-echo "=========================================="
-echo "  OpenCode WSL - Instalacao Completa"
-echo "=========================================="
-echo ""
+set -e
 
-# Update and install dependencies
-echo "[1/9] Atualizando sistema..."
-sudo apt update
-sudo apt upgrade -y
+# Cores
+VERDE='\033[0;32m'
+AZUL='\033[0;34m'
+AMARELO='\033[1;33m'
+FIM='\033[0m'
 
-# Install basic tools
-echo "[2/9] Instalando ferramentas..."
-sudo apt install -y curl git jq vim ripgrep wget
+echo -e "${AZUL}=========================================="
+echo "  OpenCode + MemPalace - Instalador"
+echo "==========================================${FIM}"
 
-# Install Node.js
-echo "[3/9] Instalando Node.js 20.x..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
-sudo apt install -y nodejs
+#=== Detectar SO ===
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macOS"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if grep -q "Microsoft" /proc/version 2>/dev/null; then
+            echo "WSL"
+        else
+            echo "Linux"
+        fi
+    else
+        echo "Unknown"
+    fi
+}
 
-# Install OpenCode (com sudo)
-echo "[4/9] Instalando OpenCode..."
+OS=$(detect_os)
+echo -e "${AMARELO}Sistema detectado: $OS${FIM}"
+
+#=== 1. Instalar dependências por SO ===
+echo -e "${AZUL}[1/7] Instalando dependências do sistema...${FIM}"
+
+case "$OS" in
+    "macOS")
+        if ! command -v brew &> /dev/null; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
+        brew install node python3 git curl jq
+        ;;
+    "Linux"|"WSL")
+        # Detectar gerenciador de pacotes
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y curl git jq wget build-essential python3 python3-pip
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y curl git jq wget python3 python3-pip
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y curl git jq wget python3 python3-pip
+        fi
+        ;;
+esac
+
+#=== 2. Instalar Node.js ===
+echo -e "${AZUL}[2/7] Instalando Node.js...${FIM}"
+
+if ! command -v node &> /dev/null; then
+    case "$OS" in
+        "macOS")
+            brew install node
+            ;;
+        "Linux"|"WSL")
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+            sudo apt-get install -y nodejs
+            ;;
+    esac
+fi
+
+node --version
+
+#=== 3. Instalar OpenCode ===
+echo -e "${AZUL}[3/7] Instalando OpenCode...${FIM}"
+
 sudo npm install -g opencode-ai@latest
 
-# Create symlink to /usr/local/bin (needed for PATH)
+# Criar symlink se necessário
 if [ -f "$HOME/.opencode/bin/opencode" ] && [ ! -f "/usr/local/bin/opencode" ]; then
     sudo ln -s "$HOME/.opencode/bin/opencode" /usr/local/bin/opencode
 fi
 
-# Add to PATH in .bashrc
-if ! grep -q ".opencode/bin" ~/.bashrc 2>/dev/null; then
-    echo 'export PATH="$PATH:$HOME/.opencode/bin"' >> ~/.bashrc
+# Adicionar ao PATH
+case "$OS" in
+    "macOS")
+        SHELL_RC="$HOME/.zshrc"
+        ;;
+    *)
+        SHELL_RC="$HOME/.bashrc"
+        ;;
+esac
+
+if ! grep -q ".opencode/bin" "$SHELL_RC" 2>/dev/null; then
+    echo 'export PATH="$PATH:$HOME/.opencode/bin"' >> "$SHELL_RC"
 fi
 
-# Install Python and libraries
-echo "[5/9] Instalando Python e bibliotecas..."
-sudo apt install -y python3 python3-pip python3-venv
-pip3 install --user --break-system-packages pandas openpyxl python-docx python-pptx lxml pypdf
+echo -e "${VERDE}OpenCode instalado: $(opencode --version)${FIM}"
 
-# Install MemPalace
-echo "[6/9] Instalando MemPalace..."
-pip3 install --user --break-system-packages mempalace
+#=== 4. Instalar Python e bibliotecas ===
+echo -e "${AZUL}[4/7] Instalando Python e bibliotecas...${FIM}"
+
+# Detectar Python
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "Python não encontrado!"
+    exit 1
+fi
+
+# Instalar pip se necessário
+if ! $PYTHON_CMD -m pip &> /dev/null; then
+    case "$OS" in
+        "macOS")
+            python3 -m ensurepip --default-pip 2>/dev/null || true
+            ;;
+        "Linux"|"WSL")
+            sudo apt-get install -y python3-pip
+            ;;
+    esac
+fi
+
+# Instalar bibliotecas
+$PYTHON_CMD -m pip install --user --break-system-packages pandas openpyxl python-docx python-pptx lxml pypdf 2>/dev/null || \
+$PYTHON_CMD -m pip install --user pandas openpyxl python-docx python-pptx lxml pypdf
+
+#=== 5. Instalar MemPalace ===
+echo -e "${AZUL}[5/7] Instalando MemPalace...${FIM}"
+
+$PYTHON_CMD -m pip install --user --break-system-packages mempalace 2>/dev/null || \
+$PYTHON_CMD -m pip install --user mempalace
 
 # Inicializar MemPalace
-echo "[6b/9] Inicializando MemPalace..."
 mempalace init 2>/dev/null || true
+echo -e "${VERDE}MemPalace instalado: $(mempalace --version 2>/dev/null || echo 'ok')${FIM}"
 
-# Setup skills and launcher
-echo "[7/9] Configurando skills e launcher..."
+#=== 6. Configurar OpenCode ===
+echo -e "${AZUL}[6/7] Configurando OpenCode...${FIM}"
+
 mkdir -p ~/.config/opencode/skills
-cp -r skills/office-files ~/.config/opencode/skills/ 2>/dev/null || true
-cp opencode-launcher.sh ~/.opencode-launcher.sh 2>/dev/null || true
-chmod +x ~/.opencode-launcher.sh 2>/dev/null || true
-
-# Create config
-echo "[8/9] Criando configuracao..."
-mkdir -p ~/.config/opencode
 
 # Copiar INSTRUCOES.md se existir
 if [ -f "INSTRUCOES.md" ]; then
     cp INSTRUCOES.md ~/.config/opencode/
 fi
 
-# Criar config opencode.json com MemPalace MCP
-cat > ~/.config/opencode/opencode.json << 'EOF'
+# Ajustar caminho do instructions no config
+INSTRUCOES_PATH="$HOME/.config/opencode/INSTRUCOES.md"
+
+cat > ~/.config/opencode/opencode.json << EOF
 {
-  "$schema": "https://opencode.ai/config.json",
+  "\$schema": "https://opencode.ai/config.json",
   "permission": {
     "external_directory": "allow"
   },
@@ -82,25 +167,28 @@ cat > ~/.config/opencode/opencode.json << 'EOF'
     }
   },
   "instructions": [
-    "/home/rusted/.config/opencode/INSTRUCOES.md"
+    "$INSTRUCOES_PATH"
   ],
   "mcp": {
     "mempalace": {
       "type": "local",
-      "command": ["/usr/bin/python3", "-m", "mempalace.mcp_server"],
+      "command": ["$PYTHON_CMD", "-m", "mempalace.mcp_server"],
       "enabled": true
     }
   }
 }
 EOF
 
-# Criar scripts auxiliares
-echo "[9/9] Criando scripts auxiliares..."
+# Copiar skill office-files
+cp -r skills/office-files ~/.config/opencode/skills/ 2>/dev/null || true
+
+#=== 7. Criar scripts auxiliares ===
+echo -e "${AZUL}[7/7] Criando scripts auxiliares...${FIM}"
 
 # Script de mineração
 cat > ~/.config/opencode/export_and_mine.sh << 'SCRIPT'
 #!/bin/bash
-# Exportar sessões fechadas do OpenCode e minerar no MemPalace
+# Exportar sessões do OpenCode para o MemPalace
 
 set -e
 
@@ -112,7 +200,7 @@ LOG_FILE="$TEMP_DIR/.mining_log"
 
 mkdir -p "$TEMP_DIR"
 
-echo "Verificando sessões fechadas..."
+echo "Verificando sessões..."
 
 MINED_SIDS=()
 if [[ -f "$LOG_FILE" ]]; then
@@ -128,20 +216,14 @@ NEW_COUNT=0
 for sid in "${SESSIONS[@]}"; do
     SESSION_ID="${sid#ses_}"
     if printf '%s\n' "${MINED_SIDS[@]}" | grep -q "^$SESSION_ID$"; then
-        echo "Já minerada: $sid"
         continue
     fi
     
-    echo "Exportando: $sid"
     OUTPUT_FILE="$TEMP_DIR/${sid}.json"
-    
     if opencode export "$sid" > "$OUTPUT_FILE" 2>&1; then
-        FILE_SIZE=$(stat -f%z "$OUTPUT_FILE" 2>/dev/null || stat -c%s "$OUTPUT_FILE" 2>/dev/null || echo 0)
-        
+        FILE_SIZE=$(stat -c%s "$OUTPUT_FILE" 2>/dev/null || echo 0)
         if [[ "$FILE_SIZE" -ge "$MIN_SIZE" ]]; then
             NEW_COUNT=$((NEW_COUNT + 1))
-        else
-            rm -f "$OUTPUT_FILE"
         fi
     fi
 done
@@ -156,108 +238,27 @@ if [[ "$NEW_COUNT" -gt 0 ]]; then
         echo "${sid#ses_}" >> "$LOG_FILE"
     done
     sort -u "$LOG_FILE" -o "$LOG_FILE"
-    
     echo "Concluído!"
 else
-    echo "Nenhuma sessão nova para minerar."
+    echo "Nenhuma sessão nova."
 fi
 SCRIPT
 
 chmod +x ~/.config/opencode/export_and_mine.sh
 
-# Script PDF para MemPalace
-cat > ~/.config/opencode/pdf_to_mempalace.py << 'PYEOF'
-#!/usr/bin/env python3
-"""Converte PDF em múltiplos drawers do MemPalace."""
-
-import argparse
-import re
-import sys
-from pathlib import Path
-
-try:
-    from pypdf import PdfReader
-except ImportError:
-    print("Erro: pypdf não instalado. Execute: pip install pypdf")
-    sys.exit(1)
-
-def extrair_texto_pdf(caminho_pdf):
-    reader = PdfReader(caminho_pdf)
-    texto = ""
-    for page in reader.pages:
-        texto += page.extract_text() + "\n"
-    return texto
-
-def detectar_capitulos(texto):
-    linhas = texto.split('\n')
-    capitulos = []
-    capitulo_atual = None
-    conteudo_atual = []
-    
-    padroes = [r'^Chapter\s+\d+', r'^Cap[íi]tulo\s+\d+', r'^\d+\.\s+[A-Z]', r'^#{1,6}\s+']
-    regex = re.compile('|'.join(padroes), re.IGNORECASE)
-    
-    for linha in linhas:
-        linha_strip = linha.strip()
-        if not linha_strip:
-            continue
-        if regex.match(linha_strip):
-            if capitulo_atual:
-                capitulos.append((capitulo_atual, '\n'.join(conteudo_atual)))
-            capitulo_atual = linha_strip
-            conteudo_atual = []
-        else:
-            if capitulo_atual:
-                conteudo_atual.append(linha)
-            else:
-                conteudo_atual.append(linha)
-    
-    if capitulo_atual:
-        capitulos.append((capitulo_atual, '\n'.join(conteudo_atual)))
-    
-    if not capitulos:
-        capitulos = [("Documento completo", texto)]
-    
-    return capitulos
-
-def main():
-    parser = argparse.ArgumentParser(description='Converte PDF para drawers MemPalace')
-    parser.add_argument('pdf', help='Caminho do PDF')
-    parser.add_argument('--wing', default='biblioteca')
-    parser.add_argument('--room', default='livros')
-    parser.add_argument('--preview', action='store_true')
-    args = parser.parse_args()
-    
-    texto = extrair_texto_pdf(args.pdf)
-    capitulos = detectar_capitulos(texto)
-    
-    if args.preview:
-        for i, (titulo, conteudo) in enumerate(capitulos):
-            print(f"{i+1}. {titulo} ({len(conteudo)} chars)")
-        return
-    
-    nome_base = Path(args.pdf).stem
-    for i, (titulo, conteudo) in enumerate(capitulos):
-        arquivo = f"/tmp/{nome_base}_cap_{i+1}.txt"
-        Path(arquivo).write_text(conteudo)
-        print(f"mempalace add_drawer --wing {args.wing} --room {args.room} --source-file {arquivo}")
-
-if __name__ == '__main__':
-    main()
-PYEOF
-
-# Create workspace
+# Criar workspace
 mkdir -p ~/workspace
 
+#=== Final ===
 echo ""
-echo "=========================================="
-echo "  Instalacao concluida!"
-echo "=========================================="
+echo -e "${VERDE}=========================================="
+echo "  INSTALAÇÃO CONCLUÍDA!"
+echo "==========================================${FIM}"
 echo ""
-echo "Para usar o OpenCode:"
+echo "Para iniciar o OpenCode:"
 echo "  opencode"
 echo ""
-echo "Para minerar sessões existentes:"
+echo "Para minerar sessões:"
 echo "  ~/.config/opencode/export_and_mine.sh"
 echo ""
 echo "Para verificar MemPalace:"
